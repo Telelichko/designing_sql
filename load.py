@@ -355,7 +355,7 @@ if __name__ == "__main__":
     df_all = clean_and_validate(df_raw)
 
     # ── Detect anomalies and write report (using imported function) ──
-    anomalies_report = detect_anomalies(df_all)
+    anomalies_report = detect_anomalies(df_all, source_path=str(source_path))
     with open("ANOMALIES.md", "w", encoding="utf-8") as f:
         f.write(anomalies_report)
     print("Anomalies report written to ANOMALIES.md")

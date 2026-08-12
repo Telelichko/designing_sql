@@ -1,9 +1,16 @@
 import pandas as pd
 
-def detect_anomalies(df: pd.DataFrame) -> str:
-    """Generate a Markdown report of data anomalies."""
+def detect_anomalies(df: pd.DataFrame, source_path: str = None) -> str:
+    """Generate a Markdown report of data anomalies.
+    
+    Args:
+        df: DataFrame to analyze.
+        source_path: Optional path or URL of the source data (included in report).
+    """
     lines = []
     lines.append("# Data Anomalies Report")
+    if source_path:
+        lines.append(f"**Source:** `{source_path}`")
     lines.append(f"**Generated:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append(f"**Total rows:** {len(df)}")
     lines.append("")
