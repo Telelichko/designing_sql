@@ -26,6 +26,18 @@ cd web
 npm install pg @types/pg
 
 
+# 7. Create file .env.example and copy it into .env.local.
+echo "DATABASE_URL=postgresql://myuser:mypassword@127.0.0.1:54321/datapack" > .env.example.
+
+copy .env.example .env.local.
+
+# 8. Run app
+npm run dev
+
+
+# 9. Open browser:
+http://localhost:3000/companies
+
 
 ----------
 
