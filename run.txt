@@ -12,6 +12,13 @@ python -m venv .venv
 pip install -r requirements.txt
 python load.py
 
+# 4. Run Postgres
+docker exec -it designing_sql-pg-1 psql -U myuser -d datapack
+
+
+# 5. Run queries
+python run_queries.py
+
 
 ----------
 
@@ -23,3 +30,9 @@ docker compose up -d
 
 docker ps
 docker stop designing_sql-pg-1 && docker rm designing_sql-pg-1
+
+
+docker exec -it designing_sql-pg-1 psql -U myuser -d datapack
+\q
+
+
