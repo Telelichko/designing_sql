@@ -1,6 +1,7 @@
-"""Read all pages from Data/In/data_pack → deduplicate → load into PostgreSQL."""
+"""Read all pages from Data/In/data_pack → deduplicate → load into PostgreSQL → export schema."""
 
 import json
+import subprocess
 from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -44,7 +45,7 @@ def dedup(df: pd.DataFrame) -> pd.DataFrame:
 
 # ── 3. Load + schema + indexes ───────────────────────────────────────────────
 def load(df: pd.DataFrame):
-    print(f"Connecting to: {DSN}")  # Confirm the script is using the correct settings
+    print(f"Connecting to: {DSN}")
     eng = create_engine(DSN)
 
     # Write table (replace on first run)
@@ -65,8 +66,23 @@ def load(df: pd.DataFrame):
     
     print("Successfully loaded and indexed data.")
 
+# ── 4. Export schema to file ─────────────────────────────────────────────────
+def export_schema():
+    print("Exporting schema to schema.sql...")
+    cmd = [
+        "docker", "compose", "exec", "-T", "pg", 
+        "pg_dump", "-U", "myuser", "-d", "datapack", "--schema-only"
+    ]
+    try:
+        with open("schema.sql", "w", encoding="utf-8") as f:
+            subprocess.run(cmd, stdout=f, check=True)
+        print("Schema successfully exported to schema.sql")
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Failed to export schema. Ensure Docker is running. Error: {e}")
+
 # ── main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     df = read_all(SRC)
     df = dedup(df)
     load(df)
+    export_schema()
