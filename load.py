@@ -1,5 +1,17 @@
-"""Read all pages from Data/In/data_pack → clean, validate, deduplicate → load into PostgreSQL → export schema.
-Optional: save cleaned (all) and unique data to CSV files in Data/Out/csv_results (use --save-csv flag).
+#!/usr/bin/env python3
+"""
+Read all pages from Data/In/data_pack (or specified source) → clean, validate,
+deduplicate → load into PostgreSQL → export schema.
+Optional: save cleaned (all) and unique data to CSV files in Data/Out/csv_results
+(use --save-csv flag).
+
+USAGE EXAMPLES
+--------------
+  python script.py                         # use default source (Data/In/data_pack)
+  python script.py --source /path/to/data  # custom local directory or file
+  python script.py --source https://example.com/data.xlsx   # download remote file
+  python script.py --save-csv              # also save CSV exports
+  python script.py --source data.csv --save-csv
 """
 
 import json
@@ -7,6 +19,8 @@ import re
 import subprocess
 import hashlib
 import argparse
+import tempfile
+import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -15,7 +29,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.types import VARCHAR, NUMERIC, INTEGER
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-SRC = Path("Data/In/data_pack")
+DEFAULT_SRC = Path("Data/In/data_pack")
 DSN = "postgresql+psycopg2://myuser:mypassword@127.0.0.1:54321/datapack"
 TABLE = "companies"
 CSV_OUT_DIR = Path("Data/Out/csv_results")
@@ -23,8 +37,16 @@ CSV_OUT_DIR = Path("Data/Out/csv_results")
 
 # ── 1. Read all files / all pages ────────────────────────────────────────────
 def read_all(path: Path) -> pd.DataFrame:
+    """Read a directory (all supported files) or a single file."""
     frames = []
-    for f in sorted(path.iterdir()):
+    if path.is_file():
+        files_to_read = [path]
+    elif path.is_dir():
+        files_to_read = sorted(path.iterdir())
+    else:
+        raise ValueError(f"Source does not exist: {path}")
+
+    for f in files_to_read:
         if f.suffix in (".xlsx", ".xls"):
             xls = pd.ExcelFile(f)
             frames += [xls.parse(sheet_name=s) for s in xls.sheet_names]
@@ -43,8 +65,19 @@ def read_all(path: Path) -> pd.DataFrame:
     if not frames:
         raise ValueError(f"No supported files (.xlsx, .csv, .json) found in {path}")
     df = pd.concat(frames, ignore_index=True)
-    print(f"Read {len(df)} rows from all files")
+    print(f"Read {len(df)} rows from all files in {path}")
     return df
+
+
+def download_source(url: str) -> Path:
+    """Download a file from URL to a temporary directory and return its path."""
+    temp_dir = Path(tempfile.mkdtemp(prefix="data_pack_download_"))
+    filename = url.split('/')[-1] or "downloaded_file"
+    local_path = temp_dir / filename
+    print(f"Downloading {url} to {local_path} ...")
+    urllib.request.urlretrieve(url, local_path)
+    print("Download complete.")
+    return local_path
 
 
 # ── 2. Clean and normalise (no email filtering yet) ──────────────────────────
@@ -259,17 +292,44 @@ def export_schema():
 # ── 8. Main ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Load data to PostgreSQL and optionally save CSV exports."
+        description=(
+            "Load data to PostgreSQL and optionally save CSV exports.\n\n"
+            "Examples:\n"
+            "  %(prog)s                         # use default source\n"
+            "  %(prog)s --source /path/to/data  # custom directory/file\n"
+            "  %(prog)s --source https://...    # download remote file\n"
+            "  %(prog)s --save-csv              # also save CSV files"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
         "--save-csv",
         action="store_true",
         help="Save cleaned (all) and unique data to CSV files in Data/Out/csv_results"
     )
+    parser.add_argument(
+        "--source", "-s",
+        type=str,
+        default=str(DEFAULT_SRC),
+        help=(
+            "Source path (local file/directory or HTTP/HTTPS URL). "
+            "If a URL is given, the file will be downloaded to a temporary location "
+            "and processed. Default: Data/In/data_pack"
+        )
+    )
     args = parser.parse_args()
 
+    # Resolve the source
+    src_str = args.source
+    if src_str.startswith(('http://', 'https://')):
+        source_path = download_source(src_str)
+    else:
+        source_path = Path(src_str)
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source path does not exist: {source_path}")
+
     # 1. Read raw data
-    df_raw = read_all(SRC)
+    df_raw = read_all(source_path)
 
     # 2. Clean and normalise (all rows, no email filtering yet)
     df_all = clean_and_validate(df_raw)
