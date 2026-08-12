@@ -3,15 +3,15 @@
 -- ============================================================================
 SELECT 
     COUNT(*) AS total_rows
-FROM records;
+FROM companies;
 
 -- ============================================================================
--- Top 5 categories by company count
+-- Top 5 categories by companies count
 -- ============================================================================
 SELECT 
-    company.category, 
-    COUNT(DISTINCT company.name) AS company_count
-FROM records as company
+    companies.category, 
+    COUNT(DISTINCT companies.name) AS company_count
+FROM companies
 GROUP BY category
 ORDER BY company_count DESC
 LIMIT 5;
@@ -20,25 +20,25 @@ LIMIT 5;
 -- Average rating by city (min 10 reviews)
 -- ============================================================================
 SELECT 
-    company.city, 
-    ROUND(AVG(REPLACE(NULLIF(company.rating, ''), ',', '.')::numeric), 2) AS companies_avg_rating,
-    COUNT(company.name) AS companies_in_sample
-FROM records AS company
-WHERE company.reviews_count ~ '^-?\d+(\.\d+)?$'
-  AND company.reviews_count::numeric >= 10
-GROUP BY company.city
+    companies.city, 
+    ROUND(AVG(REPLACE(NULLIF(companies.rating, ''), ',', '.')::numeric), 2) AS companies_avg_rating,
+    COUNT(companies.name) AS companies_in_sample
+FROM companies
+WHERE companies.reviews_count ~ '^-?\d+(\.\d+)?$'
+  AND companies.reviews_count::numeric >= 10
+GROUP BY companies.city
 ORDER BY companies_avg_rating DESC;
 
 -- ============================================================================
 -- Website adoption rate by category (%)
 -- ============================================================================
 SELECT 
-    COALESCE(company.category, 'Not specified') AS category,
+    COALESCE(companies.category, 'Not specified') AS category,
     COUNT(*) AS total_companies,
     ROUND(
-        (SUM(CASE WHEN company.site LIKE 'http%' THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)) * 100, 
+        (SUM(CASE WHEN companies.site LIKE 'http%' THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*), 0)) * 100, 
         2
     ) AS website_share_pct
-FROM records AS company
-GROUP BY company.category
+FROM companies
+GROUP BY companies.category
 ORDER BY website_share_pct DESC;

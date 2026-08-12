@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict eXBUgykxEX9JethhxBFUJCd7uj26MXrd5ZppYKwmP4iKT7qkofubanXx8cyqOaq
+\restrict PGMbtchXvEac6madKsySqLlZ1qZRBvrgR8NUKErcbFVIlZTNEU2mefPKwmIhkpC
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -23,98 +23,106 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: records; Type: TABLE; Schema: public; Owner: myuser
+-- Name: companies; Type: TABLE; Schema: public; Owner: myuser
 --
 
-CREATE TABLE public.records (
-    id text,
-    name text,
-    category text,
-    city text,
-    address text,
-    rating text,
-    reviews_count text,
-    site text,
-    phone text
+CREATE TABLE public.companies (
+    id character varying(50),
+    name character varying(255),
+    category character varying(100),
+    city character varying(100),
+    address character varying(255),
+    rating numeric(5,2),
+    reviews_count integer,
+    site character varying(255),
+    phone character varying(50),
+    email character varying(255)
 );
 
 
-ALTER TABLE public.records OWNER TO myuser;
+ALTER TABLE public.companies OWNER TO myuser;
 
 --
--- Name: records uq_row; Type: CONSTRAINT; Schema: public; Owner: myuser
+-- Name: companies uq_row; Type: CONSTRAINT; Schema: public; Owner: myuser
 --
 
-ALTER TABLE ONLY public.records
-    ADD CONSTRAINT uq_row UNIQUE (id, name, category, city, address, rating, reviews_count, site, phone);
-
-
---
--- Name: ix_records_address; Type: INDEX; Schema: public; Owner: myuser
---
-
-CREATE INDEX ix_records_address ON public.records USING btree (address);
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT uq_row UNIQUE (id, name, category, city, address, rating, reviews_count, site, phone, email);
 
 
 --
--- Name: ix_records_category; Type: INDEX; Schema: public; Owner: myuser
+-- Name: ix_companies_address; Type: INDEX; Schema: public; Owner: myuser
 --
 
-CREATE INDEX ix_records_category ON public.records USING btree (category);
-
-
---
--- Name: ix_records_city; Type: INDEX; Schema: public; Owner: myuser
---
-
-CREATE INDEX ix_records_city ON public.records USING btree (city);
+CREATE INDEX ix_companies_address ON public.companies USING btree (address);
 
 
 --
--- Name: ix_records_id; Type: INDEX; Schema: public; Owner: myuser
+-- Name: ix_companies_category; Type: INDEX; Schema: public; Owner: myuser
 --
 
-CREATE INDEX ix_records_id ON public.records USING btree (id);
-
-
---
--- Name: ix_records_name; Type: INDEX; Schema: public; Owner: myuser
---
-
-CREATE INDEX ix_records_name ON public.records USING btree (name);
+CREATE INDEX ix_companies_category ON public.companies USING btree (category);
 
 
 --
--- Name: ix_records_phone; Type: INDEX; Schema: public; Owner: myuser
+-- Name: ix_companies_city; Type: INDEX; Schema: public; Owner: myuser
 --
 
-CREATE INDEX ix_records_phone ON public.records USING btree (phone);
-
-
---
--- Name: ix_records_rating; Type: INDEX; Schema: public; Owner: myuser
---
-
-CREATE INDEX ix_records_rating ON public.records USING btree (rating);
+CREATE INDEX ix_companies_city ON public.companies USING btree (city);
 
 
 --
--- Name: ix_records_reviews_count; Type: INDEX; Schema: public; Owner: myuser
+-- Name: ix_companies_email; Type: INDEX; Schema: public; Owner: myuser
 --
 
-CREATE INDEX ix_records_reviews_count ON public.records USING btree (reviews_count);
+CREATE INDEX ix_companies_email ON public.companies USING btree (email);
 
 
 --
--- Name: ix_records_site; Type: INDEX; Schema: public; Owner: myuser
+-- Name: ix_companies_id; Type: INDEX; Schema: public; Owner: myuser
 --
 
-CREATE INDEX ix_records_site ON public.records USING btree (site);
+CREATE INDEX ix_companies_id ON public.companies USING btree (id);
+
+
+--
+-- Name: ix_companies_name; Type: INDEX; Schema: public; Owner: myuser
+--
+
+CREATE INDEX ix_companies_name ON public.companies USING btree (name);
+
+
+--
+-- Name: ix_companies_phone; Type: INDEX; Schema: public; Owner: myuser
+--
+
+CREATE INDEX ix_companies_phone ON public.companies USING btree (phone);
+
+
+--
+-- Name: ix_companies_rating; Type: INDEX; Schema: public; Owner: myuser
+--
+
+CREATE INDEX ix_companies_rating ON public.companies USING btree (rating);
+
+
+--
+-- Name: ix_companies_reviews_count; Type: INDEX; Schema: public; Owner: myuser
+--
+
+CREATE INDEX ix_companies_reviews_count ON public.companies USING btree (reviews_count);
+
+
+--
+-- Name: ix_companies_site; Type: INDEX; Schema: public; Owner: myuser
+--
+
+CREATE INDEX ix_companies_site ON public.companies USING btree (site);
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict eXBUgykxEX9JethhxBFUJCd7uj26MXrd5ZppYKwmP4iKT7qkofubanXx8cyqOaq
+\unrestrict PGMbtchXvEac6madKsySqLlZ1qZRBvrgR8NUKErcbFVIlZTNEU2mefPKwmIhkpC
 
