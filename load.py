@@ -97,15 +97,37 @@ def clean_and_validate(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ── 3. Filter valid emails ────────────────────────────────────────────────────
+# ── 3. Filter valid emails (prints each invalid row as id + url) ────────────
 def filter_valid_emails(df: pd.DataFrame) -> pd.DataFrame:
-    """Remove rows with invalid email format."""
+    """Remove rows with invalid email format.
+    Prints each invalid row as 'id, invalid email: {email}' (and site if available).
+    """
     email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     valid_mask = df['email'].str.match(email_regex, na=False)
-    invalid_count = (~valid_mask).sum()
-    if invalid_count:
-        print(f"Warning: {invalid_count} rows with invalid email will be dropped")
-    df_valid = df[valid_mask].copy()
+    invalid_mask = ~valid_mask
+    invalid_count = invalid_mask.sum()
+
+    if invalid_count > 0:
+        invalid_rows = df.loc[invalid_mask, ['id', 'email', 'site']].copy()
+        # Drop rows where email is NaN (should not happen)
+        invalid_rows = invalid_rows[invalid_rows['email'].notna()]
+
+        print(f"\n⚠️ Found {invalid_count} rows with invalid email (these will be dropped)")
+        if len(invalid_rows) > 0:
+            print("   Invalid emails (id, email, site):")
+            for idx, row in invalid_rows.head(10).iterrows():
+                site_info = f", site: {row['site']}" if pd.notna(row['site']) and str(row['site']).strip() else ""
+                print(f"     {row['id']}, invalid email: {row['email']}{site_info}")
+            if len(invalid_rows) > 10:
+                print(f"     ... and {len(invalid_rows) - 10} more")
+        else:
+            print("   (No rows with non-null email among invalid rows)")
+        print()
+
+        df_valid = df[valid_mask].copy()
+    else:
+        df_valid = df.copy()
+
     print(f"After email filtering: {len(df_valid)} rows")
     return df_valid
 
@@ -256,7 +278,7 @@ if __name__ == "__main__":
     if args.save_csv:
         save_csv(df_all, "full_data.csv")
 
-    # 4. Filter only valid emails
+    # 4. Filter only valid emails (prints invalid URLs before dropping)
     df_valid = filter_valid_emails(df_all)
 
     # 5. Deduplicate

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict PGMbtchXvEac6madKsySqLlZ1qZRBvrgR8NUKErcbFVIlZTNEU2mefPKwmIhkpC
+\restrict 3Sb2RNY8V4v1hCM9sOyszmHahFcBzgxCC2t6AXezddBwe743DlzVTwlA9nsPKcR
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -18,6 +18,22 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: myuser
+--
+
+-- *not* creating schema, since initdb creates it
+
+
+ALTER SCHEMA public OWNER TO myuser;
+
+--
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: myuser
+--
+
+COMMENT ON SCHEMA public IS '';
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -27,7 +43,7 @@ SET default_table_access_method = heap;
 --
 
 CREATE TABLE public.companies (
-    id character varying(50),
+    id character varying(50) NOT NULL,
     name character varying(255),
     category character varying(100),
     city character varying(100),
@@ -43,18 +59,11 @@ CREATE TABLE public.companies (
 ALTER TABLE public.companies OWNER TO myuser;
 
 --
--- Name: companies uq_row; Type: CONSTRAINT; Schema: public; Owner: myuser
+-- Name: companies companies_pkey; Type: CONSTRAINT; Schema: public; Owner: myuser
 --
 
 ALTER TABLE ONLY public.companies
-    ADD CONSTRAINT uq_row UNIQUE (id, name, category, city, address, rating, reviews_count, site, phone, email);
-
-
---
--- Name: ix_companies_address; Type: INDEX; Schema: public; Owner: myuser
---
-
-CREATE INDEX ix_companies_address ON public.companies USING btree (address);
+    ADD CONSTRAINT companies_pkey PRIMARY KEY (id);
 
 
 --
@@ -79,27 +88,6 @@ CREATE INDEX ix_companies_email ON public.companies USING btree (email);
 
 
 --
--- Name: ix_companies_id; Type: INDEX; Schema: public; Owner: myuser
---
-
-CREATE INDEX ix_companies_id ON public.companies USING btree (id);
-
-
---
--- Name: ix_companies_name; Type: INDEX; Schema: public; Owner: myuser
---
-
-CREATE INDEX ix_companies_name ON public.companies USING btree (name);
-
-
---
--- Name: ix_companies_phone; Type: INDEX; Schema: public; Owner: myuser
---
-
-CREATE INDEX ix_companies_phone ON public.companies USING btree (phone);
-
-
---
 -- Name: ix_companies_rating; Type: INDEX; Schema: public; Owner: myuser
 --
 
@@ -114,15 +102,15 @@ CREATE INDEX ix_companies_reviews_count ON public.companies USING btree (reviews
 
 
 --
--- Name: ix_companies_site; Type: INDEX; Schema: public; Owner: myuser
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: myuser
 --
 
-CREATE INDEX ix_companies_site ON public.companies USING btree (site);
+REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict PGMbtchXvEac6madKsySqLlZ1qZRBvrgR8NUKErcbFVIlZTNEU2mefPKwmIhkpC
+\unrestrict 3Sb2RNY8V4v1hCM9sOyszmHahFcBzgxCC2t6AXezddBwe743DlzVTwlA9nsPKcR
 
