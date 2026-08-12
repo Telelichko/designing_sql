@@ -1,6 +1,7 @@
 """Execute queries from a given SQL file and save results to CSV files in Data/Out/query_results."""
 
 import argparse
+import re
 from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine, text
@@ -23,10 +24,28 @@ def read_queries_by_blocks(sql_file: Path):
     return queries
 
 
-def is_select_query(query: str) -> bool:
-    """Check if the query is a SELECT statement (case-insensitive)."""
-    stripped = query.strip().upper()
-    return stripped.startswith('SELECT') or stripped.startswith('WITH')
+def remove_comments(sql: str) -> str:
+    """Remove single-line (--) and multi-line (/* */) comments from SQL."""
+    # Remove -- comments (from -- to end of line)
+    sql = re.sub(r'--[^\n]*', '', sql)
+    # Remove /* */ comments (non-greedy)
+    sql = re.sub(r'/\*.*?\*/', '', sql, flags=re.DOTALL)
+    return sql
+
+
+def is_empty_query(query_text: str) -> bool:
+    """Check if query contains only comments and whitespace."""
+    cleaned = remove_comments(query_text).strip()
+    return len(cleaned) == 0
+
+
+def is_select_query(query_text: str) -> bool:
+    """Check if the query is a SELECT or WITH statement (case-insensitive)."""
+    cleaned = remove_comments(query_text).strip()
+    if not cleaned:
+        return False
+    upper = cleaned.upper()
+    return upper.startswith('SELECT') or upper.startswith('WITH')
 
 
 def run_queries(sql_file: str = 'queries.sql'):
@@ -48,13 +67,18 @@ def run_queries(sql_file: str = 'queries.sql'):
 
     query_counter = 1
     for query_text in queries:
+        # Skip blocks that contain only comments
+        if is_empty_query(query_text):
+            print(f'\n⚠️ Skipping empty or comment-only block')
+            continue
+
         print(f'\n{"=" * 60}')
         print(f'Executing Query {query_counter}...')
         print(f'{"=" * 60}')
 
         try:
             if is_select_query(query_text):
-                # For SELECT queries, use pd.read_sql to get results
+                # For SELECT queries, fetch results as DataFrame
                 df = pd.read_sql(text(query_text), eng)
                 print(df.to_string(index=False))
 
@@ -62,7 +86,7 @@ def run_queries(sql_file: str = 'queries.sql'):
                 df.to_csv(csv_file, index=False, encoding='utf-8')
                 print(f'\n✓ Results saved to {csv_file.resolve()}')
             else:
-                # For DDL/DML (non-SELECT), use engine.execute()
+                # For DDL/DML (non-SELECT), execute without fetching results
                 with eng.connect() as conn:
                     conn.execute(text(query_text))
                     conn.commit()
