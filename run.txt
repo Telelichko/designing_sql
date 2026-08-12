@@ -20,6 +20,13 @@ docker exec -it designing_sql-pg-1 psql -U myuser -d datapack
 python run_queries.py
 
 
+# 6. Initialize NPX app
+npx create-next-app@latest web --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
+cd web
+npm install pg @types/pg
+
+
+
 ----------
 
 Additional commands:
