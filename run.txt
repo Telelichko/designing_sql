@@ -1,0 +1,25 @@
+# 1. Start PostgreSQL
+run Docker Desktop
+docker compose up -d
+
+
+# 2. Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate      # Windows
+# source .venv/bin/activate # macOS / Linux
+
+# 3. Install dependencies and load data
+pip install -r requirements.txt
+python load.py
+
+
+----------
+
+Additional commands:
+
+docker compose down -v
+docker compose up -d
+
+
+docker ps
+docker stop designing_sql-pg-1 && docker rm designing_sql-pg-1
