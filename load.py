@@ -4,6 +4,7 @@ Read all pages from Data/In/data_pack (or specified source) → clean, validate,
 deduplicate → load into PostgreSQL → export schema.
 Optional: save cleaned (all) and unique data to CSV files in Data/Out/csv_results
 (use --save-csv flag).
+Also writes a data anomalies report to ANOMALIES.md.
 
 USAGE EXAMPLES
 --------------
@@ -216,6 +217,17 @@ def load(df: pd.DataFrame):
     print(f"Connecting to: {DSN}")
     eng = create_engine(DSN)
 
+    # Drop rows with NULL id before loading if 'id' column exists
+    if 'id' in df.columns:
+        null_id_count = df['id'].isna().sum()
+        if null_id_count > 0:
+            print(f"⚠️ Dropping {null_id_count} rows with NULL 'id' before loading.")
+            df = df[df['id'].notna()].copy()
+            # Append to ANOMALIES.md
+            with open("ANOMALIES.md", "a", encoding="utf-8") as f:
+                f.write(f"\n## NULL IDs Dropped\n")
+                f.write(f"Before loading, {null_id_count} rows with NULL 'id' were removed.\n")
+
     db_schema = {
         'id': VARCHAR(50),
         'name': VARCHAR(255),
@@ -237,17 +249,22 @@ def load(df: pd.DataFrame):
     # Add PRIMARY KEY on 'id' if exists, else surrogate key
     with eng.begin() as conn:
         if 'id' in df.columns:
+            # Drop any existing primary key constraint with the default name
             pk_name = f"{TABLE}_pkey"
             result = conn.execute(text(f"""
                 SELECT 1 FROM pg_constraint WHERE conname = '{pk_name}'
             """))
             if result.scalar() is not None:
                 conn.execute(text(f'ALTER TABLE "{TABLE}" DROP CONSTRAINT {pk_name}'))
+                print(f"Dropped existing primary key {pk_name}")
+
+            # Now it's safe to add primary key because we have no NULL ids
             conn.execute(text(f'ALTER TABLE "{TABLE}" ADD PRIMARY KEY ("id")'))
             print("Primary key on 'id' added")
         else:
+            # No 'id' column – add surrogate key
             conn.execute(text(f'ALTER TABLE "{TABLE}" ADD COLUMN "_row_id" SERIAL PRIMARY KEY'))
-            print("Surrogate primary key added")
+            print("Surrogate primary key added (no 'id' column present)")
 
     # Create indexes on commonly filtered columns
     index_cols = ["category", "city", "rating", "reviews_count", "email"]
@@ -289,7 +306,89 @@ def export_schema():
         print(f"Warning: export failed. Error: {e}")
 
 
-# ── 8. Main ──────────────────────────────────────────────────────────────────
+# ── 8. Anomaly detection ────────────────────────────────────────────────────
+def detect_anomalies(df: pd.DataFrame) -> str:
+    """Generate a Markdown report of data anomalies."""
+    lines = []
+    lines.append("# Data Anomalies Report")
+    lines.append(f"**Generated:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append(f"**Total rows:** {len(df)}")
+    lines.append("")
+
+    # Missing values
+    missing = df.isnull().sum()
+    missing = missing[missing > 0]
+    if not missing.empty:
+        lines.append("## Missing Values")
+        for col, count in missing.items():
+            pct = count / len(df) * 100
+            lines.append(f"- **{col}**: {count} missing ({pct:.1f}%)")
+    else:
+        lines.append("## Missing Values")
+        lines.append("No missing values found.")
+    lines.append("")
+
+    # Rating out of 0-5
+    if 'rating' in df.columns:
+        rating = pd.to_numeric(df['rating'], errors='coerce')
+        invalid = rating[(rating < 0) | (rating > 5)].dropna()
+        if len(invalid) > 0:
+            lines.append("## Rating Out of Range (0–5)")
+            lines.append(f"Found {len(invalid)} rows with rating outside 0–5.")
+            sample = df.loc[invalid.index, ['id', 'name', 'rating']].head(5)
+            for _, row in sample.iterrows():
+                lines.append(f"- id: {row['id']}, name: {row['name']}, rating: {row['rating']}")
+        else:
+            lines.append("## Rating Out of Range")
+            lines.append("All ratings are within 0–5.")
+        lines.append("")
+
+    # Negative reviews_count
+    if 'reviews_count' in df.columns:
+        neg = df[df['reviews_count'] < 0]
+        if len(neg) > 0:
+            lines.append("## Negative Reviews Count")
+            lines.append(f"Found {len(neg)} rows with negative reviews_count.")
+            sample = neg[['id', 'name', 'reviews_count']].head(5)
+            for _, row in sample.iterrows():
+                lines.append(f"- id: {row['id']}, name: {row['name']}, reviews_count: {row['reviews_count']}")
+        else:
+            lines.append("## Negative Reviews Count")
+            lines.append("No negative reviews counts.")
+        lines.append("")
+
+    # Duplicate IDs (before dedup)
+    if 'id' in df.columns:
+        dup_mask = df['id'].duplicated()
+        if dup_mask.any():
+            lines.append("## Duplicate IDs")
+            lines.append(f"Found {dup_mask.sum()} duplicate ID entries.")
+            dup_examples = df[df['id'].duplicated(keep=False)].sort_values('id')[['id', 'name']].head(10)
+            for _, row in dup_examples.iterrows():
+                lines.append(f"- id: {row['id']}, name: {row['name']}")
+        else:
+            lines.append("## Duplicate IDs")
+            lines.append("No duplicate IDs found.")
+        lines.append("")
+
+    # Missing critical fields (id or name)
+    critical = ['id', 'name']
+    missing_crit = df[critical].isnull().any(axis=1).sum()
+    if missing_crit > 0:
+        lines.append("## Missing Critical Fields (id or name)")
+        lines.append(f"Found {missing_crit} rows missing either 'id' or 'name'.")
+        sample = df[df[critical].isnull().any(axis=1)][['id', 'name']].head(5)
+        for _, row in sample.iterrows():
+            lines.append(f"- id: {row['id']}, name: {row['name']}")
+    else:
+        lines.append("## Missing Critical Fields")
+        lines.append("All rows have both 'id' and 'name'.")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# ── 9. Main ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description=(
@@ -333,6 +432,12 @@ if __name__ == "__main__":
 
     # 2. Clean and normalise (all rows, no email filtering yet)
     df_all = clean_and_validate(df_raw)
+
+    # ── Detect anomalies and write report ──
+    anomalies_report = detect_anomalies(df_all)
+    with open("ANOMALIES.md", "w", encoding="utf-8") as f:
+        f.write(anomalies_report)
+    print("Anomalies report written to ANOMALIES.md")
 
     # 3. If --save-csv, save the full dataset (all rows, including invalid emails)
     if args.save_csv:
